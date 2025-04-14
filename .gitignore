@@ -1,6 +1,9 @@
 .env
-.csv
-.json
-.jsonl
 .venv
-__pycache__/
+__pycache__/*
+
+# output files
+*.csv
+*.json
+*.jsonl
+

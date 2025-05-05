@@ -1,16 +1,14 @@
-from groq_helper import Groq
+from groq import Groq
 import os
 import json
 from dotenv import load_dotenv
-from utils import load_json
-
+from utils.file_utils import load_json_file
 load_dotenv()  # Load variables from .env into the environment
 
 api_key = os.getenv("groq")
 
-
-def get_groq_client(key):
-    client = Groq(api_key=key)
+def get_groq_client():
+    client = Groq(api_key=api_key)
     return client
 
 
@@ -33,7 +31,7 @@ def run_groq(client, prompt, max_tokens, system_prompt, response_format=False, m
 
 
 def generate_text_groq(idx, path, groq_client):
-    json_data = load_json(path)
+    json_data = load_json_file(path)
     word_count = len(json_data["original_text"].split())
 
     print("generating for id = ", idx, "word count = ", word_count)
@@ -53,6 +51,23 @@ def generate_bias_groq(prompt, client):
     output = run_groq(client, prompt, 1024, system_prompt, True)
     return json.loads(output)["bias"]
 
+
+def generate_topic_similarity_groq(client, entities, topics, model="llama-3.3-70b-versatile"):
+    system_prompt = "Do not hallucinate. Do not make up information. Do not consider one off events. Do not consider outlier relationships. Do not consider one off major news events. If the entity is a phrase, select the most relevant words for the topic."
+    prompt = f"Given a group of topics and a group of entities, score from 0 to 1 for each topic-entity pair, where 0 means no similarity and 1 means very similar. Format the response as a json of the form {{ topic : {{ entity : score }} }}. Sort the results so that entities with higher scores are earlier. The topics are: {topics}. The entities are: {entities}."
+        
+
+    output = run_groq(client, prompt, 1024, system_prompt, True, model=model)
+
+    return json.loads(output)
+
+def generate_entites_sentiments_groq(client, text, model="llama-3.3-70b-versatile"):
+    system_prompt = "Return responses in json format as follows {{entity1: sentiment1, entity2: sentiment2}}. Named entities should be present in the text. Do not hallucinate. Sentiment scores should be real numbers between -1 and +1 where -1 is strongly negative and +1 is strongly positive. Sentiment scores should reflect the author's perspective."
+
+    prompt = f"Given the following text, identify the named entities and their sentiments. The text is: {text}"
+
+    output = run_groq(client, prompt, 1024, system_prompt, True, model=model)
+    return json.loads(output)
 
 def generate_topic_groq(client, loaded_json):
     system_prompt = ("Are the following two texts on roughly the same topic?"

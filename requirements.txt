@@ -1,0 +1,13 @@
+cython==3.0.12
+datasets==3.5.0
+groq==0.22.0
+ipykernel==6.29.5
+jaraco.collections==5.1.0
+openai==1.73.0
+pip-chill==1.0.3
+python-dotenv==1.1.0
+sentence-transformers==4.1.0
+spacy==3.8.5
+tf-keras==2.19.0
+tomli==2.0.1
+xgboost==3.0.0

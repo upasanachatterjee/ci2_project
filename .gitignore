@@ -7,3 +7,5 @@ __pycache__/*
 *.json
 *.jsonl
 
+# test files
+testers

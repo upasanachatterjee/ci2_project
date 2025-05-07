@@ -107,6 +107,8 @@ def expand_columns(df, topic_columns, sentiment_columns, encoded_text_column) ->
     topic_long.columns = range(len(topic_columns))  # avoid duplicate column names
     sentiment_long.columns = range(len(sentiment_columns))
 
+    assert len(topic_long) == len(sentiment_long)
+
     topic_series = topic_long.stack()
     sentiment_series = sentiment_long.stack()
 
@@ -138,7 +140,8 @@ def expand_columns(df, topic_columns, sentiment_columns, encoded_text_column) ->
 
 
 def get_df_split(type, train, test):
-    joined = pd.concat([train, test], axis=0)
+    joined = pd.concat([train, test], axis=0).reset_index(drop=True)
+    print(joined.shape)
     df = keep_columns_related_to(joined, type)
     topic_columns = [f'{type}_topic_0', f'{type}_topic_1', f'{type}_topic_2', f'{type}_topic_3', f'{type}_topic_4']
     sentiment_columns = [f'{type}_sentiment_0', f'{type}_sentiment_1', f'{type}_sentiment_2', f'{type}_sentiment_3', f'{type}_sentiment_4']
@@ -163,4 +166,4 @@ def get_df_split(type, train, test):
     Y_test = Y_test.convert_dtypes()
     Y_train = Y_train.convert_dtypes()
 
-    return (X_test, Y_test)
+    return (X_train, Y_train, X_test, Y_test)

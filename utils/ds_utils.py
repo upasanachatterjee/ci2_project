@@ -9,7 +9,7 @@ def login_huggingface(token):
     login(token)
     print("Logged in to Hugging Face Hub")
 
-def load_dataset_from_huggingface(dataset_name="dragonslayer631/ci2_allsides", split="train"):
+def load_dataset_from_huggingface(dataset_name="dragonslayer631/ci2_allsides", split="train") -> Dataset:
     dataset = load_dataset(dataset_name, split=split)
     print(f"Loaded dataset: {dataset_name}, split: {split}")
     return dataset

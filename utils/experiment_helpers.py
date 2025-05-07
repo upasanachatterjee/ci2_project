@@ -1,6 +1,8 @@
 import os 
 import pandas as pd
 import matplotlib.pyplot as plt
+from xgboost import XGBClassifier
+import numpy as np
 
 
 def compare_grouped_feature_importance(models, model_names, group_prefixes, importance_type='gain', output_dir="plots"):
@@ -94,3 +96,99 @@ def compare_within_group_feature_importance(models, model_names, group_prefix, i
     plt.close()
 
     return top_df
+
+def compute_total_effect_multiclass_per_treatment(
+    model: XGBClassifier,
+    df: pd.DataFrame,
+    treatment_cols: list[str],
+    plot_name: str,
+    plot_path='plots',
+    class_labels=["Left", "Center", "Right"],
+    low_q=0.10,
+    high_q=0.90,
+):
+    result = {}
+
+    assert all(f in df.columns for f in model.feature_names_in_), "Mismatch in required feature columns"
+
+    required_features = list(model.feature_names_in_)
+
+    for t_col in treatment_cols:
+        df_copy = df[df[t_col] != 0]
+
+        confounders = list(df_copy.columns)
+        confounders.remove(t_col)
+        
+        x_low = -1
+        x_high = 1
+
+        features = [t_col] + confounders
+        
+        df_low = df_copy[features].copy()        
+        df_high = df_copy[features].copy()
+        
+        df_low[t_col] = x_low
+        df_high[t_col] = x_high
+
+        X_low = df_low[required_features]
+        X_high = df_high[required_features]
+
+        probs_low = model.predict_proba(X_low)
+        probs_high = model.predict_proba(X_high)
+
+        TE_diffs = probs_high - probs_low              # shape: (n_samples, n_classes)
+        TE_means = TE_diffs.mean(axis=0)               # mean TE per class
+        TE_q25 = np.percentile(TE_diffs, 25, axis=0)
+        TE_q75 = np.percentile(TE_diffs, 75, axis=0)
+
+        result[t_col] = {
+            "mean": dict(zip(class_labels, TE_means)),
+            "q25": dict(zip(class_labels, TE_q25)),
+            "q75": dict(zip(class_labels, TE_q75))
+        }
+
+    plot_path = f"{plot_path}/{plot_name}.png"
+    x = np.arange(len(class_labels))
+    width = 0.8 / len(treatment_cols)
+
+    plt.figure(figsize=(10, 6))
+    for i, t_col in enumerate(treatment_cols):
+        offsets = x + (i - len(treatment_cols)/2) * width + width/2
+        means = [result[t_col]["mean"][cls] for cls in class_labels]
+        errs_lower = []
+        errs_upper = []
+
+        for cls in class_labels:
+            mean = result[t_col]["mean"][cls]
+            q25 = result[t_col]["q25"][cls]
+            q75 = result[t_col]["q75"][cls]
+
+            err_low = mean - q25
+            err_high = q75 - mean
+
+            if err_low < 0:
+                print(f"[Warning] Lower whisker negative for class '{cls}' and treatment '{t_col}'. Clipped to 0.")
+                err_low = 0.0
+            if err_high < 0:
+                print(f"[Warning] Upper whisker negative for class '{cls}' and treatment '{t_col}'. Clipped to 0.")
+                err_high = 0.0
+
+            errs_lower.append(err_low)
+            errs_upper.append(err_high)
+
+        yerr = [errs_lower, errs_upper]
+
+        plt.bar(offsets, means, width=width, yerr=yerr, capsize=4, label=t_col)
+
+    plt.xticks(x, class_labels)
+    plt.axhline(0, color='black', linewidth=0.8)
+    plt.title(f"Total Effect of Each Treatment (-1 → +1)")
+    plt.ylabel("Mean Δ Predicted Probability (with IQR whiskers)")
+    plt.legend(title="Treatment", loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.tight_layout()
+    plt.grid(True, linestyle="--", alpha=0.5)
+    plt.savefig(plot_path)
+    plt.close()
+
+
+    return result

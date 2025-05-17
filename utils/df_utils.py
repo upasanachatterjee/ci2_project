@@ -59,7 +59,7 @@ def load_multiple_csv_to_df(paths: list, separator="|") -> pd.DataFrame:
 
 def keep_columns_related_to(df: pd.DataFrame, type_to_keep: str): 
     always_drop = [
-    'topic', 'tags', 'id',
+    'topic', 'tags',
     'summary_100', 'summary_5', 'summary_50', 'text', 
     'summary_100_entity_sentiments', 'summary_100_topic_to_sentiment',
     'summary_50_entity_sentiments', 'summary_50_topic_to_sentiment',
